@@ -1,0 +1,42 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>com.github.wool0826.LocalCodeAssistant</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>LocalCodeAssistant</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="chanwool94@gmail.com" url="https://www.github.com/wool0826">My Github</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+    <description><![CDATA[Code Assistant only uses your local machine.]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Response from the assistant"
+                    factoryClass="com.github.wool0826.localcodeassistant.window.ResultWindowFactory"
+                    anchor="right"
+                    canCloseContents="false"/>
+    </extensions>
+
+    <actions>
+        <action
+                id="AskMyAssistant"
+                class="com.github.wool0826.localcodeassistant.action.AskAction"
+                text="Ask My Assistant"
+                description="Send selected text to my assistant">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt b"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl meta b"/>
+        </action>
+    </actions>
+</idea-plugin>
