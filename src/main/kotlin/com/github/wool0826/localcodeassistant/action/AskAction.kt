@@ -17,6 +17,7 @@ import com.intellij.ui.content.ContentFactory
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import javax.swing.JEditorPane
+import javax.swing.JScrollPane
 
 class AskAction : AnAction() {
     private val apiClient: ApiClient = OllamaApiClient()
@@ -47,13 +48,15 @@ class AskAction : AnAction() {
 
                         ToolWindowManager.getInstance(project).invokeLater {
                             // htmlText 가 포함된 Panel 생성
-                            val editorPane =
-                                JEditorPane(
-                                    "text/html",
-                                    htmlText
-                                ).apply { isEditable = false }
+                            val scrollPane =
+                                JScrollPane(
+                                    JEditorPane(
+                                        "text/html",
+                                        htmlText
+                                    ).apply { isEditable = false }
+                                )
 
-                            val panel = SimpleToolWindowPanel(true, true).apply { setContent(editorPane) }
+                            val panel = SimpleToolWindowPanel(true, true).apply { setContent(scrollPane) }
 
                             val toolWindowManager = ToolWindowManager.getInstance(project)
                             val toolWindow =
