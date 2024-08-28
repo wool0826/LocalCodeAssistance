@@ -25,100 +25,125 @@ class AskAction : AnAction() {
     private val markDownParser = Parser.builder().build()
     private val htmlRenderer = HtmlRenderer.builder().build()
 
+    private val keywordToQueryMap =
+        mapOf(
+            "@review" to "Review the code below.",
+            "@refactor" to "Refactor the code below.",
+            "@rename" to "Suggest a name of all variables in the code below.",
+            "@performance" to "Check performance issues the code below.",
+            "@security" to "Check security issues the code below.",
+        )
+
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project? = e.project
         val editor: Editor? = e.getData(com.intellij.openapi.actionSystem.CommonDataKeys.EDITOR)
 
-        if (editor != null) {
-            val selectedFile = FileEditorManager.getInstance(project!!).selectedFiles.firstOrNull()
-            val selectedText = editor.selectionModel.selectedText
+        if (editor == null) {
+            throwExceptionWithMessageDialog("No text selected")
+        }
 
-            if (!selectedText.isNullOrEmpty()) {
-                val prompt =
-                    selectedText
-                        .trimQuery()
-                        .validateQuery()
-                        .replaceCommandInQuery()
+        val selectedFile = FileEditorManager.getInstance(project!!).selectedFiles.firstOrNull()
+        val selectedText = requireNotNull(editor).selectionModel.selectedText
 
-                object : Task.Backgroundable(project, "Just a moment, the assistant is processing your request...") {
-                    override fun run(indicator: ProgressIndicator) {
-                        val result = apiClient.autoComplete(targetFile = selectedFile, prompt = prompt)
+        if (selectedText.isNullOrEmpty()) {
+            return
+        }
 
-                        val document = markDownParser.parse(result)
-                        val htmlText = makeHtmlStylish(htmlRenderer.render(document))
+        val prompt =
+            selectedText
+                .split("\n")
+                .map { it.trim() }
+                .validateQueries()
+                .replaceKeywordsToQuery()
 
-                        ToolWindowManager.getInstance(project).invokeLater {
-                            // htmlText 가 포함된 Panel 생성
-                            val scrollPane =
-                                JScrollPane(
-                                    JEditorPane(
-                                        "text/html",
-                                        htmlText
-                                    ).apply { isEditable = false }
-                                ).apply {
-                                    horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-                                }
+        object : Task.Backgroundable(project, "Just a moment, the assistant is processing your request...") {
+            override fun run(indicator: ProgressIndicator) {
+                val result = apiClient.autoComplete(targetFile = selectedFile, prompt = prompt)
 
-                            val panel = SimpleToolWindowPanel(true, true).apply { setContent(scrollPane) }
+                val document = markDownParser.parse(result)
+                val htmlText = makeHtmlStylish(htmlRenderer.render(document))
 
-                            val toolWindowManager = ToolWindowManager.getInstance(project)
-                            val toolWindow =
-                                toolWindowManager.getToolWindow("Response from the assistant") ?: throw Exception()
-
-                            val contentFactory = ContentFactory.getInstance()
-                            val content = contentFactory.createContent(panel.content, "", false)
-
-                            val contentManagerInToolWindow = toolWindow.contentManager
-                            contentManagerInToolWindow.removeAllContents(true)
-                            contentManagerInToolWindow.addContent(content)
-
-                            toolWindow.show()
+                ToolWindowManager.getInstance(project).invokeLater {
+                    // htmlText 가 포함된 Panel 생성
+                    val scrollPane =
+                        JScrollPane(
+                            JEditorPane(
+                                "text/html",
+                                htmlText
+                            ).apply { isEditable = false }
+                        ).apply {
+                            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
                         }
-                    }
-                }.queue()
+
+                    val panel = SimpleToolWindowPanel(true, true).apply { setContent(scrollPane) }
+
+                    val toolWindowManager = ToolWindowManager.getInstance(project)
+                    val toolWindow =
+                        toolWindowManager.getToolWindow("Response from the assistant") ?: throw Exception()
+
+                    val contentFactory = ContentFactory.getInstance()
+                    val content = contentFactory.createContent(panel.content, "", false)
+
+                    val contentManagerInToolWindow = toolWindow.contentManager
+                    contentManagerInToolWindow.removeAllContents(true)
+                    contentManagerInToolWindow.addContent(content)
+
+                    toolWindow.show()
+                }
             }
-        } else {
-            Messages.showMessageDialog(project, "No text selected", "Error", Messages.getErrorIcon())
-        }
+        }.queue()
     }
 
-    private fun String.trimQuery(): List<String> {
-        val lines = this.split("\n")
-        return lines.map { it.trim() }
-    }
-
-    private fun List<String>.validateQuery(): List<String> {
-        if (this.isEmpty()) {
-            throw IllegalArgumentException()
-        }
+    private fun List<String>.validateQueries(): List<String> {
+        require(this.isNotEmpty()) { "List of query cannot be empty" }
 
         val commandLine = this.first()
         if (!commandLine.startsWith("//")) {
-            ApplicationManager.getApplication().invokeLater {
-                Messages.showErrorDialog("You must use comment on the first line", "Error")
-            }
-
-            throw IllegalArgumentException("must use comment on the first line")
+            throwExceptionWithMessageDialog("First line must start with '//'")
         }
 
         return this
     }
 
-    private fun List<String>.replaceCommandInQuery(): String {
-        val commandLine = this.first()
+    private fun List<String>.replaceKeywordsToQuery(): String {
+        val commands =
+            this.first()
+                .replace("//", "")
+                .trim()
+                .split(" ")
+
         val codeSnippets = this.drop(1).joinToString(separator = "\n")
 
         val replacedCommand: String =
-            when {
-                commandLine.contains("@review") -> "Review the code below."
-                commandLine.contains("@refactor") -> "Refactor the code below."
-                commandLine.contains("@rename") -> "Suggest a name of all variables in the code below."
-                commandLine.contains("@performance") -> "Check performance issues the code below."
-                commandLine.contains("@security") -> "Check security issues the code below."
-                else -> "Execute user's request using the code below. request: ${commandLine.replace("//", "")}"
-            }
+            commands.joinToString(separator = " and ") { replaceKeywordsToQuery(it) }
 
         return "$replacedCommand\n$codeSnippets"
+    }
+
+    private fun replaceKeywordsToQuery(command: String): String {
+        return when {
+            keywordToQueryMap.containsKey(command) -> requireNotNull(keywordToQueryMap[command])
+            command.contains("@language") -> {
+                val languageCode = validateLanguageCommandAndGetLanguageCode(command)
+                "Translate your response to $languageCode"
+            }
+            else -> command
+        }
+    }
+
+    private fun validateLanguageCommandAndGetLanguageCode(command: String): String {
+        val parts = command.split(":")
+
+        require(parts.size == 2) {
+            throwExceptionWithMessageDialog("You must use @language command like this: '@language:korean'")
+        }
+
+        val languageCode = parts.last()
+        if (languageCode.any { it !in 'A'..'Z' && it !in 'a'..'z' }) {
+            throwExceptionWithMessageDialog("Language code must be letters")
+        }
+
+        return parts.last()
     }
 
     private fun makeHtmlStylish(plainHtml: String): String {
@@ -175,5 +200,13 @@ class AskAction : AnAction() {
             </body>
             </html>
         """.trimIndent()
+    }
+
+    private fun throwExceptionWithMessageDialog(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            Messages.showErrorDialog(message, "Error")
+        }
+
+        throw IllegalArgumentException(message)
     }
 }

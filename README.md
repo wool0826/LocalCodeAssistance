@@ -32,6 +32,9 @@ public class TestClass {
     - Request performance checks.
 5. `@security`
     - Request security checks.
+6. `@language:${languageCode}`
+    - Translate response to languageCode
+    - ex) @language:korean
 
 ### Sample
 
