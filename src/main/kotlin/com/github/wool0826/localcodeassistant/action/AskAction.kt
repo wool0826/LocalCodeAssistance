@@ -18,6 +18,7 @@ import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import javax.swing.JEditorPane
 import javax.swing.JScrollPane
+import javax.swing.ScrollPaneConstants
 
 class AskAction : AnAction() {
     private val apiClient: ApiClient = OllamaApiClient()
@@ -54,7 +55,9 @@ class AskAction : AnAction() {
                                         "text/html",
                                         htmlText
                                     ).apply { isEditable = false }
-                                )
+                                ).apply {
+                                    horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+                                }
 
                             val panel = SimpleToolWindowPanel(true, true).apply { setContent(scrollPane) }
 
@@ -112,7 +115,7 @@ class AskAction : AnAction() {
                 commandLine.contains("@rename") -> "Suggest a name of all variables in the code below."
                 commandLine.contains("@performance") -> "Check performance issues the code below."
                 commandLine.contains("@security") -> "Check security issues the code below."
-                else -> return commandLine
+                else -> "Execute user's request using the code below. request: ${commandLine.replace("//", "")}"
             }
 
         return "$replacedCommand\n$codeSnippets"
