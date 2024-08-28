@@ -19,15 +19,16 @@ class OllamaApiClient : ApiClient {
     private val gson = Gson()
 
     override fun isModelExist(modelName: String): Boolean {
-        val response = client
-            .newCall(
-                Request
-                    .Builder()
-                    .url("$baseUrl/tags")
-                    .get()
-                    .build()
-            )
-            .execute()
+        val response =
+            client
+                .newCall(
+                    Request
+                        .Builder()
+                        .url("$baseUrl/tags")
+                        .get()
+                        .build()
+                )
+                .execute()
 
         return response.use {
             val models = gson.fromJson(it.body?.string(), OllamaTagsResponse::class.java).models

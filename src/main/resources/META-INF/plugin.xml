@@ -30,9 +30,9 @@
 
     <actions>
         <action
-                id="AskMyAssistant"
-                class="com.github.wool0826.localcodeassistant.action.AskAction"
-                text="Ask My Assistant"
+                id="RequestReviewAction"
+                class="com.github.wool0826.localcodeassistant.action.RequestReviewAction"
+                text="Request review to local-code-assistant"
                 description="Send selected text to my assistant">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt b"/>

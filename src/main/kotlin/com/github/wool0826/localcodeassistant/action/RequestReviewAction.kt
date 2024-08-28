@@ -20,7 +20,7 @@ import javax.swing.JEditorPane
 import javax.swing.JScrollPane
 import javax.swing.ScrollPaneConstants
 
-class AskAction : AnAction() {
+class RequestReviewAction : AnAction() {
     private val apiClient: ApiClient = OllamaApiClient()
     private val markDownParser = Parser.builder().build()
     private val htmlRenderer = HtmlRenderer.builder().build()
@@ -54,27 +54,17 @@ class AskAction : AnAction() {
                 .split("\n")
                 .map { it.trim() }
                 .validateQueries()
-                .replaceKeywordsToQuery()
+                .replaceToQueryIfKeyword()
 
         object : Task.Backgroundable(project, "Just a moment, the assistant is processing your request...") {
             override fun run(indicator: ProgressIndicator) {
-                val result = apiClient.autoComplete(targetFile = selectedFile, prompt = prompt)
-
-                val document = markDownParser.parse(result)
-                val htmlText = makeHtmlStylish(htmlRenderer.render(document))
+                val autoCompletionResult = apiClient.autoComplete(targetFile = selectedFile, prompt = prompt)
+                val autoCompletionDocument = markDownParser.parse(autoCompletionResult)
+                val autoCompletionRenderedHtml = htmlRenderer.render(autoCompletionDocument).toStylish()
 
                 ToolWindowManager.getInstance(project).invokeLater {
-                    // htmlText 가 포함된 Panel 생성
-                    val scrollPane =
-                        JScrollPane(
-                            JEditorPane(
-                                "text/html",
-                                htmlText
-                            ).apply { isEditable = false }
-                        ).apply {
-                            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-                        }
-
+                    // create panel
+                    val scrollPane = createScrollPane(autoCompletionRenderedHtml)
                     val panel = SimpleToolWindowPanel(true, true).apply { setContent(scrollPane) }
 
                     val toolWindowManager = ToolWindowManager.getInstance(project)
@@ -105,22 +95,21 @@ class AskAction : AnAction() {
         return this
     }
 
-    private fun List<String>.replaceKeywordsToQuery(): String {
-        val commands =
+    private fun List<String>.replaceToQueryIfKeyword(): String {
+        val codeSnippets = this.drop(1).joinToString(separator = "\n")
+
+        // Generate custom query using command line
+        val replacedCommand =
             this.first()
                 .replace("//", "")
                 .trim()
                 .split(" ")
-
-        val codeSnippets = this.drop(1).joinToString(separator = "\n")
-
-        val replacedCommand: String =
-            commands.joinToString(separator = " and ") { replaceKeywordsToQuery(it) }
+                .joinToString(separator = " ") { replaceToQueryIfKeyword(it) }
 
         return "$replacedCommand\n$codeSnippets"
     }
 
-    private fun replaceKeywordsToQuery(command: String): String {
+    private fun replaceToQueryIfKeyword(command: String): String {
         return when {
             keywordToQueryMap.containsKey(command) -> requireNotNull(keywordToQueryMap[command])
             command.contains("@language") -> {
@@ -146,7 +135,7 @@ class AskAction : AnAction() {
         return parts.last()
     }
 
-    private fun makeHtmlStylish(plainHtml: String): String {
+    private fun String.toStylish(): String {
         return """
             <html>
             <head>
@@ -196,10 +185,20 @@ class AskAction : AnAction() {
                 </style>
             </head>
             <body>
-                $plainHtml
+                $this
             </body>
             </html>
         """.trimIndent()
+    }
+
+    private fun createScrollPane(body: String): JScrollPane {
+        val editorPanel = JEditorPane("text/html", body)
+        editorPanel.isEditable = false
+
+        val scrollPanel = JScrollPane(editorPanel)
+        scrollPanel.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+
+        return scrollPanel
     }
 
     private fun throwExceptionWithMessageDialog(message: String) {
