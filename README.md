@@ -1,5 +1,9 @@
 # Local Code Assistant
 
+## Sample
+
+[output.webm](https://github.com/user-attachments/assets/cf68daed-4759-4603-9afb-afc9cdc13446)
+
 ## How to Build
 
 1. Clone this repository:
@@ -42,8 +46,3 @@ public class TestClass {
 6. `@language:${languageCode}`
     - Translate response to languageCode
     - ex) @language:korean
-
-### Sample
-
-[output.webm](https://github.com/user-attachments/assets/cf68daed-4759-4603-9afb-afc9cdc13446)
-
