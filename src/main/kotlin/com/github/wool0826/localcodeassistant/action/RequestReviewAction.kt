@@ -16,6 +16,8 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.ContentFactory
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import javax.swing.JEditorPane
 import javax.swing.JScrollPane
 import javax.swing.ScrollPaneConstants
@@ -32,6 +34,7 @@ class RequestReviewAction : AnAction() {
             "@rename" to "Suggest a name of all variables in the code below.",
             "@performance" to "Check performance issues the code below.",
             "@security" to "Check security issues the code below.",
+            "@summarize" to "Summarize the code below.",
         )
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -114,7 +117,7 @@ class RequestReviewAction : AnAction() {
             keywordToQueryMap.containsKey(command) -> requireNotNull(keywordToQueryMap[command])
             command.contains("@language") -> {
                 val languageCode = validateLanguageCommandAndGetLanguageCode(command)
-                "Translate your response to $languageCode"
+                "Please respond in $languageCode."
             }
             else -> command
         }

@@ -46,3 +46,5 @@ public class TestClass {
 6. `@language:${languageCode}`
     - Translate response to languageCode
     - ex) @language:korean
+7. `@summarize`
+   - Request summarizing given code.
